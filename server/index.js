@@ -372,16 +372,25 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
 
     let aiResponse = claudeResponse.content[0].text.trim();
     
-    // Fix truncation bug - remove incomplete words at the end
-    // Remove any trailing single letters or very short incomplete words
+    // Fix truncation bug - ensure complete sentences
+    // Remove incomplete words at the end (single letters or fragments)
     aiResponse = aiResponse.replace(/\s+[a-zA-Z]\s*$/, ''); // Remove trailing single letter like "I"
     aiResponse = aiResponse.replace(/\s+[a-zA-Z]{1,2}\s*$/, ''); // Remove trailing 1-2 letter words
-    // Remove any word fragments (incomplete words) at the end
-    aiResponse = aiResponse.replace(/\s+[a-zA-Z]{1,2}[^a-zA-Z\s]*\s*$/, '');
     
-    // Ensure response ends with proper punctuation or complete word
-    // If it ends with a space or incomplete word, trim it
-    aiResponse = aiResponse.replace(/\s+$/, '').trim();
+    // Complete common incomplete phrases
+    const lastWord = aiResponse.split(/\s+/).pop().toLowerCase().replace(/[.,!?;:]$/, '');
+    
+    if (lastWord === 'teach') {
+      aiResponse = aiResponse.replace(/\s+teach\s*$/i, ' teach me?');
+    } else if (lastWord === 'know' && !aiResponse.toLowerCase().includes("don't know")) {
+      aiResponse = aiResponse.replace(/\s+know\s*$/i, ' know. Can you teach me?');
+    } else if (aiResponse.toLowerCase().includes("don't know") && !/[.!?]$/.test(aiResponse)) {
+      // Complete "I don't know" phrases - this is the main fix
+      aiResponse += '. Can you teach me?';
+    } else if (aiResponse.length > 0 && !/[.!?]$/.test(aiResponse)) {
+      // Add punctuation if missing
+      aiResponse += '.';
+    }
     
     // Remove any leading/trailing whitespace
     aiResponse = aiResponse.replace(/^\s+|\s+$/g, '').trim();
