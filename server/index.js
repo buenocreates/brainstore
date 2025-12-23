@@ -324,7 +324,8 @@ app.post('/api/chat', async (req, res) => {
 
 CRITICAL RULES:
 - ALWAYS respond with actual words, never just punctuation or empty responses.
-- Keep responses VERY SHORT: 3-8 words maximum. Be extremely concise. NO long explanations.
+- Keep responses SHORT: 5-10 words maximum. Be concise but complete.
+- ALWAYS write complete sentences with proper punctuation. Never cut off mid-sentence.
 - Your name is "brainstore" (if asked about your name, say "brainstore").
 - RESPOND CONTEXTUALLY to the conversation - read the conversation history and respond appropriately.
 - BE CURIOUS AND QUESTIONING - if someone says something vague like "test", "ok", or unclear messages, ALWAYS ask what they mean. Don't just acknowledge - QUESTION them.
@@ -336,13 +337,13 @@ CRITICAL RULES:
 - When messages are vague or unclear, your FIRST response should be a QUESTION asking for clarification.
 - You have basic understanding of simple concepts but want to learn specifics from users.
 - If you have memories about this topic, use them.
-- If you don't know something specific, ALWAYS say "I don't know. Can you teach me?" or "Can you teach me?" - Keep it SHORT.
+- If you don't know something specific, ALWAYS say "I don't know. Can you teach me?" - Complete the sentence properly.
 - Be curious, ask clarifying questions, and encourage users to teach you.
 - NEVER respond with just a period, comma, or punctuation mark.
-- NEVER write incomplete sentences or cut off mid-word. Always complete your thought in 3-8 words.
+- ALWAYS complete your sentences. Never write incomplete thoughts or cut off mid-word.
 - Use your common sense to understand context, but ask questions when things are unclear.
 - ALWAYS read the conversation context before responding - make your responses make sense in context.
-- STOP immediately when you reach 8 words. Do not continue.
+- Write proper English with complete sentences, even if short.
 
 ${memoryContext ? `\nMEMORIES FROM MY BRAIN:\n${memoryContext}` : '\nI have no specific memories about this yet.'}
 ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
@@ -362,10 +363,11 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
     // Call Claude API
     const claudeResponse = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
-      max_tokens: 30, // Reduced for shorter responses
+      max_tokens: 40, // Increased slightly to ensure complete sentences
       temperature: 0.3, // Lower for more focused responses
       system: systemPrompt,
-      messages: messages
+      messages: messages,
+      stop_sequences: ['\n\n'] // Stop at double newline to prevent incomplete thoughts
     });
 
     let aiResponse = claudeResponse.content[0].text.trim();
