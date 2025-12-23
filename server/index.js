@@ -538,6 +538,19 @@ app.get('/api/logs/conversations', async (req, res) => {
   }
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Brainstore API is running',
+    status: 'ok',
+    endpoints: {
+      chat: '/api/chat',
+      logs: '/api/logs/stats',
+      conversations: '/api/logs/conversations'
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🧠 Brain AI ready to learn!`);
