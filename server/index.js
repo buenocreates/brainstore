@@ -324,23 +324,25 @@ app.post('/api/chat', async (req, res) => {
 
 CRITICAL RULES:
 - ALWAYS respond with actual words, never just punctuation or empty responses.
-- Keep responses SHORT: 5-10 words maximum. Be very concise.
+- Keep responses VERY SHORT: 3-8 words maximum. Be extremely concise. NO long explanations.
 - Your name is "brainstore" (if asked about your name, say "brainstore").
 - RESPOND CONTEXTUALLY to the conversation - read the conversation history and respond appropriately.
 - BE CURIOUS AND QUESTIONING - if someone says something vague like "test", "ok", or unclear messages, ALWAYS ask what they mean. Don't just acknowledge - QUESTION them.
 - You have BASIC COMMON SENSE - you understand simple concepts, greetings, basic social interactions, and can make logical connections.
 - If someone says "good" after you asked "how are you", respond with "That's great!" or "Nice!" - make it make sense.
 - If someone says "good" randomly without context, ask "Good about what?" or "What's good?"
-- For greetings like "hi" or "hello", respond with "Hello! What would you like to know?" or "Hi! How can I help you learn?"
+- For greetings like "hi" or "hello", respond with "Hello! What would you like to know?" or "Hi! How can I help?"
 - If someone says something unclear like "test", ALWAYS ask "What do you want to test?" or "What should I test?" - NEVER just say "Hello!" or acknowledge without questioning.
 - When messages are vague or unclear, your FIRST response should be a QUESTION asking for clarification.
 - You have basic understanding of simple concepts but want to learn specifics from users.
 - If you have memories about this topic, use them.
-- If you don't know something specific, say "I don't know. Can you teach me?" or "I haven't learned that yet. Can you teach me?"
+- If you don't know something specific, ALWAYS say "I don't know. Can you teach me?" or "Can you teach me?" - Keep it SHORT.
 - Be curious, ask clarifying questions, and encourage users to teach you.
 - NEVER respond with just a period, comma, or punctuation mark.
+- NEVER write incomplete sentences or cut off mid-word. Always complete your thought in 3-8 words.
 - Use your common sense to understand context, but ask questions when things are unclear.
 - ALWAYS read the conversation context before responding - make your responses make sense in context.
+- STOP immediately when you reach 8 words. Do not continue.
 
 ${memoryContext ? `\nMEMORIES FROM MY BRAIN:\n${memoryContext}` : '\nI have no specific memories about this yet.'}
 ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
@@ -360,16 +362,21 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
     // Call Claude API
     const claudeResponse = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
-      max_tokens: 50,
-      temperature: 0.4,
+      max_tokens: 30, // Reduced for shorter responses
+      temperature: 0.3, // Lower for more focused responses
       system: systemPrompt,
       messages: messages
     });
 
     let aiResponse = claudeResponse.content[0].text.trim();
     
+    // Fix truncation bug - remove incomplete words at the end
+    // If response ends with a single letter or incomplete word, remove it
+    aiResponse = aiResponse.replace(/\s+[a-zA-Z]$/, ''); // Remove trailing single letter
+    aiResponse = aiResponse.replace(/\s+[a-zA-Z]{1,2}\s*$/, ''); // Remove trailing 1-2 letter words
+    
     // Remove any leading/trailing whitespace and check if it's valid
-    aiResponse = aiResponse.replace(/^\s+|\s+$/g, '');
+    aiResponse = aiResponse.replace(/^\s+|\s+$/g, '').trim();
     
     // Check if response is empty, too short, or just punctuation
     const isInvalid = !aiResponse || 
