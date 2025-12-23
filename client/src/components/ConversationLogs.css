@@ -1,0 +1,314 @@
+.logs-container {
+  min-height: 100vh;
+  height: 100vh;
+  background: transparent;
+  padding: 40px;
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  color: #ffffff;
+  position: relative;
+  z-index: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+}
+
+.logs-title-section {
+  flex: 1;
+}
+
+.logs-title {
+  font-size: 48px;
+  font-weight: 700;
+  color: #d946ef;
+  margin: 0 0 10px 0;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(217, 70, 239, 1), 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.logs-subtitle {
+  font-size: 16px;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.5px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(34, 197, 94, 0.3);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  color: #22c55e;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.stats-panels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.stat-panel {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 30px;
+  border-radius: 0;
+  text-align: center;
+  border: 1px solid rgba(217, 70, 239, 0.3);
+}
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 15px;
+  color: #d946ef;
+  text-shadow: 0 0 10px rgba(217, 70, 239, 1);
+}
+
+.stat-value {
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 10px;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1), 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.stat-sublabel {
+  font-size: 14px;
+  color: #ffffff;
+  opacity: 0.8;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.search-filters {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.search-bar-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 15px;
+  color: #d946ef;
+  pointer-events: none;
+  filter: drop-shadow(0 0 5px rgba(217, 70, 239, 0.8));
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 15px 12px 45px;
+  border: 1px solid rgba(217, 70, 239, 0.4);
+  border-radius: 0;
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  outline: none;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.search-input::placeholder {
+  color: rgba(217, 70, 239, 0.5);
+}
+
+.search-input:focus {
+  border-color: rgba(217, 70, 239, 0.7);
+  box-shadow: 0 0 10px rgba(217, 70, 239, 0.3);
+}
+
+.filter-dropdown {
+  padding: 12px 15px;
+  border: 1px solid rgba(217, 70, 239, 0.4);
+  border-radius: 0;
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  cursor: pointer;
+  outline: none;
+  min-width: 150px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.filter-dropdown:focus {
+  border-color: rgba(217, 70, 239, 0.7);
+}
+
+.results-count {
+  font-size: 14px;
+  color: #ffffff;
+  margin-bottom: 20px;
+  letter-spacing: 0.5px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.conversations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.conversation-box {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(217, 70, 239, 0.3);
+  border-radius: 0;
+  padding: 20px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.conversation-box:hover {
+  border-color: rgba(217, 70, 239, 0.6);
+  box-shadow: 0 0 15px rgba(217, 70, 239, 0.3);
+  transform: translateY(-2px);
+}
+
+.conversation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(217, 70, 239, 0.2);
+}
+
+.conversation-id {
+  font-weight: 700;
+  color: #d946ef;
+  font-size: 16px;
+  text-shadow: 0 0 10px rgba(217, 70, 239, 1);
+  letter-spacing: 1px;
+}
+
+.conversation-date {
+  font-size: 12px;
+  color: #ffffff;
+  opacity: 0.7;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.conversation-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.message-row {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.message-label {
+  font-weight: 700;
+  min-width: 50px;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.user-message .message-label {
+  color: #ffffff;
+}
+
+.ai-message .message-label {
+  color: #d946ef;
+  text-shadow: 0 0 10px rgba(217, 70, 239, 1);
+}
+
+.message-text {
+  flex: 1;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.loading, .no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px;
+  color: #ffffff;
+  font-size: 16px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 1);
+}
+
+.back-button {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  padding: 12px 24px;
+  background: rgba(217, 70, 239, 0.2);
+  color: #d946ef;
+  border: 2px solid rgba(217, 70, 239, 0.4);
+  border-radius: 0;
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+  text-shadow: 0 0 10px rgba(217, 70, 239, 1);
+  letter-spacing: 0.5px;
+}
+
+.back-button:hover {
+  background: rgba(217, 70, 239, 0.3);
+  border-color: rgba(217, 70, 239, 0.6);
+  box-shadow: 0 0 15px rgba(217, 70, 239, 0.4);
+}
+
+.conversation-code {
+  font-size: 11px;
+  color: rgba(217, 70, 239, 0.6);
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  margin-top: 5px;
+  word-break: break-all;
+}

@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: brainai-backend
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SERPAPI_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: CHROMA_URL
+        value: http://chroma:8000
+    healthCheckPath: /api/logs/stats
+
+  - type: web
+    name: brainai-frontend
+    env: static
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: client/build
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://brainai-backend.onrender.com
+
+  - type: web
+    name: chroma
+    env: docker
+    dockerfilePath: ./Dockerfile.chroma
+    envVars:
+      - key: IS_PERSISTENT
+        value: TRUE
+      - key: ANONYMIZED_TELEMETRY
+        value: FALSE
+

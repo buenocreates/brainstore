@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.db
+*.log
+.DS_Store
+client/build/
+server/memory.db
+
+# API Keys - Never commit these!
+server/.env
+client/.env
+
