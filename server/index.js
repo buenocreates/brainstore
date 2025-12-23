@@ -371,11 +371,17 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
     let aiResponse = claudeResponse.content[0].text.trim();
     
     // Fix truncation bug - remove incomplete words at the end
-    // If response ends with a single letter or incomplete word, remove it
-    aiResponse = aiResponse.replace(/\s+[a-zA-Z]$/, ''); // Remove trailing single letter
+    // Remove any trailing single letters or very short incomplete words
+    aiResponse = aiResponse.replace(/\s+[a-zA-Z]\s*$/, ''); // Remove trailing single letter like "I"
     aiResponse = aiResponse.replace(/\s+[a-zA-Z]{1,2}\s*$/, ''); // Remove trailing 1-2 letter words
+    // Remove any word fragments (incomplete words) at the end
+    aiResponse = aiResponse.replace(/\s+[a-zA-Z]{1,2}[^a-zA-Z\s]*\s*$/, '');
     
-    // Remove any leading/trailing whitespace and check if it's valid
+    // Ensure response ends with proper punctuation or complete word
+    // If it ends with a space or incomplete word, trim it
+    aiResponse = aiResponse.replace(/\s+$/, '').trim();
+    
+    // Remove any leading/trailing whitespace
     aiResponse = aiResponse.replace(/^\s+|\s+$/g, '').trim();
     
     // Check if response is empty, too short, or just punctuation
