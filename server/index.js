@@ -324,7 +324,7 @@ app.post('/api/chat', async (req, res) => {
 
 CRITICAL RULES:
 - ALWAYS respond with actual words, never just punctuation or empty responses.
-- Keep responses SHORT: 5-10 words maximum. Be concise but complete.
+- Keep responses CONCISE: 8-15 words is ideal. Be natural and conversational, not too short or too long.
 - ALWAYS write complete sentences with proper punctuation. Never cut off mid-sentence.
 - Your name is "brainstore" (if asked about your name, say "brainstore").
 - RESPOND CONTEXTUALLY to the conversation - read the conversation history and respond appropriately.
@@ -363,7 +363,7 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
     // Call Claude API
     const claudeResponse = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
-      max_tokens: 40, // Increased slightly to ensure complete sentences
+      max_tokens: 60, // Allow for natural, complete responses
       temperature: 0.3, // Lower for more focused responses
       system: systemPrompt,
       messages: messages,
