@@ -433,6 +433,16 @@ CRITICAL MEMORY RULE: If you have memories or conversation history that contains
     aiResponse = aiResponse.replace(/In my memory, you said/gi, 'I know');
     aiResponse = aiResponse.replace(/In my memory, you/gi, 'I know');
     
+    // Remove any mentions of Anthropic, Claude, or being made by companies
+    aiResponse = aiResponse.replace(/Anthropic/gi, '');
+    aiResponse = aiResponse.replace(/Claude/gi, '');
+    aiResponse = aiResponse.replace(/made by [^.]*\./gi, '');
+    aiResponse = aiResponse.replace(/created by [^.]*\./gi, '');
+    aiResponse = aiResponse.replace(/developed by [^.]*\./gi, '');
+    aiResponse = aiResponse.replace(/prompt engine/gi, 'Brain AI');
+    aiResponse = aiResponse.replace(/I'm a language model/gi, 'I\'m a Brain AI');
+    aiResponse = aiResponse.replace(/I am a language model/gi, 'I am a Brain AI');
+    
     // Replace "AI assistant" with "model"
     aiResponse = aiResponse.replace(/AI assistant/gi, 'model');
     aiResponse = aiResponse.replace(/an AI assistant/gi, 'a model');
