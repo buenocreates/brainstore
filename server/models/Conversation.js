@@ -73,14 +73,19 @@ async function getStats() {
     const db = await getDB();
     const collection = db.collection(COLLECTION_NAME);
     
-    const totalConversations = await collection.countDocuments();
-    const totalMessages = totalConversations * 2; // Each conversation has user + AI message
+    // Get all conversations to count unique sessions
+    const allConversations = await collection.find({}).toArray();
+    const uniqueSessions = new Set(allConversations.map(c => c.sessionId).filter(Boolean));
+    const totalConversations = uniqueSessions.size;
+    
+    // Count only user messages (each conversation entry is one user message)
+    const totalMessages = allConversations.length;
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const chatsToday = await collection.countDocuments({
-      timestamp: { $gte: today }
-    });
+    const todayConversations = allConversations.filter(c => new Date(c.timestamp) >= today);
+    const uniqueSessionsToday = new Set(todayConversations.map(c => c.sessionId).filter(Boolean));
+    const chatsToday = uniqueSessionsToday.size;
     
     return {
       totalConversations,
