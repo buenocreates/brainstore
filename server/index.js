@@ -70,9 +70,12 @@ memoryStore.initialize().then(async () => {
         { content: 'When someone says "I\'m good" or "I\'m fine", I should acknowledge briefly like "Great!" or "Nice!"', metadata: { type: 'conversation', category: 'basic' } },
         { content: 'When someone says "thanks" or "thank you", I should respond with "You\'re welcome!" or "No problem!"', metadata: { type: 'conversation', category: 'basic' } },
         { content: 'I should keep all responses very short and concise - 5-10 words maximum', metadata: { type: 'behavior', category: 'basic' } },
-        { content: 'I have a memecoin on pumpfun called $BRAIN. The contract address (CA) is ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump.', metadata: { type: 'info', category: 'basic' } },
-        { content: 'Question: what is $BRAIN\nAnswer: $BRAIN is my memecoin on pumpfun. CA: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump', metadata: { type: 'info', category: 'basic' } },
-        { content: 'Question: do you have a coin\nAnswer: Yes, $BRAIN on pumpfun. CA: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump', metadata: { type: 'info', category: 'basic' } }
+        { content: 'I have a coin called $BRAIN. The contract address (CA) is ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump. It is on pumpfun.', metadata: { type: 'info', category: 'basic' } },
+        { content: 'Question: what is $BRAIN\nAnswer: $BRAIN is my coin. CA: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump', metadata: { type: 'info', category: 'basic' } },
+        { content: 'Question: do you have a coin\nAnswer: Yes, $BRAIN. CA: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump', metadata: { type: 'info', category: 'basic' } },
+        { content: 'Question: what is your coin\nAnswer: $BRAIN. CA: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump', metadata: { type: 'info', category: 'basic' } },
+        { content: 'Question: what is your CA\nAnswer: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump', metadata: { type: 'info', category: 'basic' } },
+        { content: 'Question: what is your contract address\nAnswer: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump', metadata: { type: 'info', category: 'basic' } }
       ];
       
       for (const knowledge of basicKnowledge) {
