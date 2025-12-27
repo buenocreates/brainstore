@@ -411,18 +411,21 @@ function ConversationLogs() {
                 <div className="conversation-code">ID: {conv.sessionId || 'N/A'}</div>
                 <div className="conversation-content">
                   {messages.length > 0 ? (
-                    messages.map((msg, msgIdx) => (
-                      <React.Fragment key={msgIdx}>
-                        <div className="message-row user-message">
-                          <span className="message-label">User:</span>
-                          <span className="message-text">{msg.userMessage}</span>
+                    <>
+                      <div className="message-row user-message">
+                        <span className="message-label">User:</span>
+                        <span className="message-text">{messages[0].userMessage}</span>
+                      </div>
+                      <div className="message-row ai-message">
+                        <span className="message-label">Brain:</span>
+                        <span className="message-text">{messages[0].aiResponse}</span>
+                      </div>
+                      {messages.length > 1 && (
+                        <div className="conversation-code" style={{ marginTop: '10px', fontSize: '16px', color: 'rgba(217, 70, 239, 0.7)' }}>
+                          +{messages.length - 1} more message{messages.length > 2 ? 's' : ''}
                         </div>
-                        <div className="message-row ai-message">
-                          <span className="message-label">Brain:</span>
-                          <span className="message-text">{msg.aiResponse}</span>
-                        </div>
-                      </React.Fragment>
-                    ))
+                      )}
+                    </>
                   ) : (
                     <>
                       <div className="message-row user-message">
