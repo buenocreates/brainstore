@@ -162,7 +162,7 @@ if (typeof wrapEffect === 'function') {
   try {
     WrappedRetro = wrapEffect(RetroEffectImpl);
   } catch (error) {
-    console.warn('Error wrapping effect:', error);
+    // Error wrapping effect
   }
 }
 
@@ -172,7 +172,6 @@ const RetroEffect = forwardRef((props, ref) => {
   try {
     return <WrappedRetro ref={ref} colorNum={colorNum} pixelSize={pixelSize} />;
   } catch (error) {
-    console.error('Error rendering RetroEffect:', error);
     return null;
   }
 });
@@ -220,7 +219,7 @@ function DitheredWaves({
         res.set(w, h);
       }
     } catch (error) {
-      console.error('Error setting resolution:', error);
+      // Error setting resolution
     }
   }, [size?.width, size?.height, gl]);
 
@@ -262,7 +261,7 @@ function DitheredWaves({
       const dpr = gl.getPixelRatio ? gl.getPixelRatio() : 1;
       mouseRef.current.set((e.clientX - rect.left) * dpr, (e.clientY - rect.top) * dpr);
     } catch (error) {
-      console.error('Error handling pointer move:', error);
+      // Error handling pointer move
     }
   };
 

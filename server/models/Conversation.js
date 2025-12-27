@@ -6,7 +6,6 @@ async function saveConversation(sessionId, userMessage, aiResponse, metadata = {
   try {
     const db = await getDB();
     if (!db) {
-      console.error('❌ Database not connected - MongoDB password may not be configured');
       throw new Error('Database not connected');
     }
     const collection = db.collection(COLLECTION_NAME);
@@ -20,14 +19,9 @@ async function saveConversation(sessionId, userMessage, aiResponse, metadata = {
     };
     
     const result = await collection.insertOne(conversation);
-    console.log('✅ MongoDB insert result:', result.insertedId);
     return { ...conversation, _id: result.insertedId };
   } catch (error) {
     // Don't throw - just log the error so the API still responds
-    console.error('❌ Error saving conversation:', error.message);
-    if (error.message.includes('password') || error.message.includes('not configured')) {
-      console.error('💡 To fix: Replace <db_password> with your actual MongoDB password in server/.env');
-    }
     // Return null instead of throwing so chat still works
     return null;
   }
@@ -47,7 +41,6 @@ async function getConversations(filters = {}, limit = 100, skip = 0) {
     
     return conversations;
   } catch (error) {
-    console.error('Error getting conversations:', error);
     throw error;
   }
 }
@@ -71,7 +64,6 @@ async function searchConversations(query, limit = 100) {
     
     return conversations;
   } catch (error) {
-    console.error('Error searching conversations:', error);
     throw error;
   }
 }
@@ -96,7 +88,6 @@ async function getStats() {
       chatsToday
     };
   } catch (error) {
-    console.error('Error getting stats:', error);
     throw error;
   }
 }
@@ -113,7 +104,20 @@ async function getConversationsBySession(sessionId) {
     
     return conversations;
   } catch (error) {
-    console.error('Error getting conversations by session:', error);
+    throw error;
+  }
+}
+
+async function clearAllConversations() {
+  try {
+    const db = await getDB();
+    if (!db) {
+      throw new Error('Database not connected');
+    }
+    const collection = db.collection(COLLECTION_NAME);
+    const result = await collection.deleteMany({});
+    return result.deletedCount;
+  } catch (error) {
     throw error;
   }
 }
@@ -123,6 +127,7 @@ module.exports = {
   getConversations,
   searchConversations,
   getStats,
-  getConversationsBySession
+  getConversationsBySession,
+  clearAllConversations
 };
 

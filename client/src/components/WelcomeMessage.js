@@ -10,7 +10,7 @@ function WelcomeMessage({ onComplete }) {
   const welcomeRef = useRef(null);
   
   const lines = [
-    { text: 'Brain AI Experiment', type: 'title' },
+    { text: 'Brainstore Experiment', type: 'title' },
     { text: 'This is an experiment in machine learning. I start knowing nothing.', type: 'text' },
     { text: 'You teach me → I learn → I remember', type: 'text' },
     { text: 'I can access the web if needed, but I learn best from you.', type: 'text' },

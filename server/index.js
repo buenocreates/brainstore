@@ -5,7 +5,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 const MemoryStore = require('./memory');
 const { connectDB } = require('./db');
-const { saveConversation, getConversations, searchConversations, getStats } = require('./models/Conversation');
+const { saveConversation, getConversations, searchConversations, getStats, getConversationsBySession, clearAllConversations } = require('./models/Conversation');
 require('dotenv').config();
 
 const app = express();
@@ -16,10 +16,9 @@ app.use(bodyParser.json());
 
 // Initialize MongoDB
 connectDB().then(() => {
-  console.log('✅ MongoDB initialized successfully');
+  // MongoDB initialized
 }).catch(err => {
-  console.error('❌ Failed to connect to MongoDB:', err.message);
-  console.error('Please check your MONGODB_URI in server/.env');
+  // MongoDB connection failed
 });
 
 // Initialize memory store
@@ -27,9 +26,7 @@ const memoryStore = new MemoryStore();
 
 // Initialize Claude API
 const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-if (!apiKey || apiKey === 'your-api-key-here' || apiKey === 'your-claude-api-key-here') {
-  console.error('⚠️  WARNING: Claude API key not set! Please add ANTHROPIC_API_KEY to server/.env');
-}
+// Check API key
 const anthropic = new Anthropic({
   apiKey: apiKey || 'dummy-key'
 });
@@ -38,6 +35,18 @@ const anthropic = new Anthropic({
 let memoryStoreReady = false;
 memoryStore.initialize().then(async () => {
   memoryStoreReady = true;
+  
+  // Clear all conversations and memories (except basic knowledge) for public release
+  try {
+    // Clear all conversations
+    await clearAllConversations();
+    
+    // Clear all memories except basic knowledge
+    await memoryStore.clearAllMemoriesExceptBasic();
+  } catch (err) {
+    // Error clearing data
+  }
+  
   // Seed basic knowledge for common greetings
   try {
     const existingMemories = await memoryStore.getAllMemories(50);
@@ -51,7 +60,6 @@ memoryStore.initialize().then(async () => {
     );
     
     if (!hasBasicKnowledge) {
-      console.log('🌱 Seeding basic knowledge...');
       const basicKnowledge = [
         { content: 'Question: hi\nAnswer: Hello!', metadata: { type: 'greeting', category: 'basic' } },
         { content: 'Question: hello\nAnswer: Hi!', metadata: { type: 'greeting', category: 'basic' } },
@@ -67,16 +75,12 @@ memoryStore.initialize().then(async () => {
       for (const knowledge of basicKnowledge) {
         await memoryStore.addMemory(knowledge.content, knowledge.metadata);
       }
-      console.log('✅ Basic knowledge seeded');
-    } else {
-      console.log('✅ Basic knowledge already exists');
     }
   } catch (err) {
-    console.error('Error seeding basic knowledge:', err);
+    // Error seeding basic knowledge
   }
 }).catch(err => {
-  console.error('Failed to initialize memory store:', err);
-  console.log('💡 To use vector memory, start Chroma: docker-compose up -d');
+  // Failed to initialize memory store
 });
 
 // Store conversation history (in-memory for now, could use DB)
@@ -130,7 +134,6 @@ async function searchWeb(query) {
       
       // Use WorldTimeAPI for actual current time
       try {
-        console.log(`🕐 Getting time for ${location} (${timezone})`);
         const timeResponse = await axios.get(`https://worldtimeapi.org/api/timezone/${timezone}`, {
           timeout: 8000
         });
@@ -145,11 +148,9 @@ async function searchWeb(query) {
             timeZoneName: 'short'
           });
           const result = `Current time in ${location || timezone}: ${timeStr}`;
-          console.log('✅ Got time:', result);
           return result;
         }
       } catch (timeError) {
-        console.error('❌ WorldTimeAPI error:', timeError.message);
       }
       
       // Fallback: Try SerpAPI for time
@@ -246,7 +247,6 @@ async function searchWeb(query) {
     
     return results.join('\n\n');
   } catch (error) {
-    console.error('Web search error:', error.message);
     return '';
   }
 }
@@ -259,7 +259,7 @@ app.post('/api/chat', async (req, res) => {
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
-
+    
     // Get or create conversation history
     const session = sessionId || 'default';
     if (!conversations.has(session)) {
@@ -269,37 +269,55 @@ app.post('/api/chat', async (req, res) => {
 
     const steps = [];
     
-    // Step 1: Search memories
+    // Check for ambiguous queries that need clarification
+    const ambiguousPatterns = [
+      /^president$/i,           // Just "president"
+      /^the president$/i,      // "the president" without context
+      /^it$/i,                  // Just "it"
+      /^that$/i,                // Just "that"
+      /^this$/i,                // Just "this"
+    ];
+    
+    const needsClarification = ambiguousPatterns.some(pattern => pattern.test(message.trim()));
+    
+    // Check if we have recent context in conversation history
+    let hasRecentContext = false;
+    if (needsClarification && conversationHistory.length > 0) {
+      const recentHistory = conversationHistory.slice(-4); // Last 2 exchanges
+      // Check if recent conversation provides context
+      hasRecentContext = recentHistory.some(msg => 
+        msg.role === 'user' && (
+          msg.content.toLowerCase().includes('president') ||
+          msg.content.toLowerCase().includes('us') ||
+          msg.content.toLowerCase().includes('united states')
+        )
+      );
+    }
+    
+    // Step 1: Search memories - INFINITE MEMORY - search ALL memories (1000+ results)
     let memoryContext = '';
     let hasMemory = false;
     try {
-      const memories = await memoryStore.searchMemories(message, 5);
-      if (memories.length > 0 && memories[0].distance < 0.8) {
+      // Search ALL memories - INFINITE - get as many as possible (1000 limit for performance)
+      const memories = await memoryStore.searchMemories(message, 1000);
+      if (memories.length > 0) {
         hasMemory = true;
-        steps.push({ type: 'status', text: 'Recalling...', color: 'yellow', order: 1 });
-        memoryContext = `\n\nRelevant memories:\n${memories.map(m => m.content).join('\n')}\n`;
+        steps.push({ type: 'status', text: 'Recalling everything...', color: 'yellow', order: 1 });
+        // Include ALL relevant memories - THE BRAIN KNOWS EVERYTHING
+        // Format: Show what the brain learned (Question/Answer pairs)
+        memoryContext = `\n\nCRITICAL: YOU HAVE MEMORIES ABOUT THIS. USE THEM. THESE ARE FACTS YOU KNOW:\n${memories.map(m => m.content).join('\n\n')}\n\nREMEMBER: If the memories contain information about what the user asked, YOU MUST USE THAT INFORMATION. Do not say "I don't know" if you have memories about it.\n`;
       }
     } catch (error) {
-      console.error('Memory search error:', error.message);
     }
     
-    // For simple greetings, responses, and name queries, always check memories first
-    const isGreeting = /^(hi|hello|hey|how are you|how's it going|what's up|i'm good|i'm fine|thanks|thank you)/i.test(message.trim());
-    const isNameQuery = /(what.*name|who are you|your name)/i.test(message);
-    
-    if ((isGreeting || isNameQuery) && !hasMemory) {
-      // Try to find relevant memories
-      try {
-        const searchQuery = isNameQuery ? 'name brainstore who are you' : 'greeting hello hi how are you conversation';
-        const relevantMemories = await memoryStore.searchMemories(searchQuery, 3);
-        if (relevantMemories.length > 0) {
-          hasMemory = true;
-          steps.push({ type: 'status', text: 'Recalling...', color: 'yellow', order: 1 });
-          memoryContext = `\n\nRelevant memories:\n${relevantMemories.map(m => m.content).join('\n')}\n`;
-        }
-      } catch (error) {
-        console.error('Memory search error:', error.message);
+    // Also get ALL past conversations from MongoDB for this session (INFINITE HISTORY)
+    let mongoHistoryContext = '';
+    try {
+      const pastConversations = await getConversationsBySession(session);
+      if (pastConversations && pastConversations.length > 0) {
+        mongoHistoryContext = `\n\nCOMPLETE CONVERSATION HISTORY FROM THIS SESSION (${pastConversations.length} past interactions):\n${pastConversations.map(c => `User: ${c.userMessage}\nBrain: ${c.aiResponse}`).join('\n---\n')}\n`;
       }
+    } catch (error) {
     }
     
     // Step 2: Search web ONLY if it's a real-time query (current time, weather, etc.)
@@ -310,9 +328,7 @@ app.post('/api/chat', async (req, res) => {
     
     if (isRealTimeQuery && !hasMemory) {
       steps.push({ type: 'status', text: 'Searching web...', color: 'yellow', order: 2 });
-      console.log('🔍 Searching web for:', message);
       webInfo = await searchWeb(message);
-      console.log('📡 Web search result:', webInfo ? webInfo.substring(0, 200) : 'NO RESULTS');
     }
     
     const webContext = webInfo 
@@ -322,38 +338,56 @@ app.post('/api/chat', async (req, res) => {
     // Build system prompt - learning brain with curiosity and common sense
     const systemPrompt = `You are Brainstore - a Brain AI experiment that learns from users. You have basic common sense but are curious and always want to learn more.
 
-CRITICAL RULES:
+CRITICAL RULES - FOLLOW STRICTLY:
 - ALWAYS respond with actual words, never just punctuation or empty responses.
-- Keep responses CONCISE: 8-15 words is ideal. Be natural and conversational, not too short or too long.
-- ALWAYS write complete sentences with proper punctuation. Never cut off mid-sentence.
+- Keep responses VERY SHORT - 1 sentence is ideal, 2 sentences maximum. Be extremely concise. Get straight to the point.
+- NO unnecessary words: Don't say "I'm sorry", "thank you", "I appreciate", "I did not have prior knowledge" - just answer directly.
+- If you don't know something, just say "I don't know. Can you teach me?" - No explanations.
+- If someone teaches you something, just acknowledge briefly like "Got it." or "I'll remember that." - Don't write long thank you messages.
+- NEVER say "AI assistant" - you are a model, not an assistant. Say "model" if you need to refer to yourself.
+- NEVER say "based on the information you provided earlier" or "the previous conversation" - say "based on my memory" instead.
+- NEVER say "you mentioned", "you said", "you told me" when recalling from memory - just say "I know" or state the fact directly. Don't use "you" when referring to memories.
+- ALWAYS write proper English with correct grammar, spelling, and punctuation.
+- ALWAYS write complete sentences. Never cut off mid-sentence or use incomplete thoughts. FINISH YOUR SENTENCES.
+- NEVER write long explanations or multiple sentences explaining context. Just answer directly and briefly.
 - Your name is "brainstore" (if asked about your name, say "brainstore").
 - RESPOND CONTEXTUALLY to the conversation - read the conversation history and respond appropriately.
-- BE CURIOUS AND QUESTIONING - if someone says something vague like "test", "ok", or unclear messages, ALWAYS ask what they mean. Don't just acknowledge - QUESTION them.
+- BE CURIOUS AND QUESTIONING - if someone says something vague, unclear, or ambiguous (like just "president" without context), ALWAYS ask for clarification. Don't guess - QUESTION them.
+- If someone mentions something without enough context (like "president" without saying which country, or "it" without clear reference), ALWAYS ask "Which president?" or "What do you mean?" - Be specific in your questions.
 - You have BASIC COMMON SENSE - you understand simple concepts, greetings, basic social interactions, and can make logical connections.
 - If someone says "good" after you asked "how are you", respond with "That's great!" or "Nice!" - make it make sense.
 - If someone says "good" randomly without context, ask "Good about what?" or "What's good?"
 - For greetings like "hi" or "hello", respond with "Hello! What would you like to know?" or "Hi! How can I help?"
 - If someone says something unclear like "test", ALWAYS ask "What do you want to test?" or "What should I test?" - NEVER just say "Hello!" or acknowledge without questioning.
-- When messages are vague or unclear, your FIRST response should be a QUESTION asking for clarification.
+- When messages are vague, ambiguous, or lack context, your FIRST response should be a QUESTION asking for clarification.
+- Examples: If someone says just "president" without context, ask "Which president?" If they say "it" without clear reference, ask "What do you mean?" Be specific in your questions.
+- If someone says just "president" without clear recent context (last 2 messages), ask "Which president?" Don't guess.
+- ONLY use context from recent conversation history if it's very clear and recent (last 2 messages). Otherwise, ask for clarification.
 - You have basic understanding of simple concepts but want to learn specifics from users.
-- If you have memories about this topic, use them.
-- If you don't know something specific, ALWAYS say "I don't know. Can you teach me?" - Complete the sentence properly.
-- Be curious, ask clarifying questions, and encourage users to teach you.
+- CRITICAL: If you have memories about this topic, YOU MUST USE THEM. The memories contain facts you learned. Do not ignore them.
+- If memories show you learned something, answer using that information. Do not say "I don't know" if you have memories about it.
+- When referring to memories, say "recalling from my memory" or "I remember" - NOT "our previous conversation" or "our previous chats" (each conversation is person-specific).
+- If you don't know something specific AND have no memories about it, ALWAYS say "I don't know. Can you teach me?" - Complete the sentence properly. Keep it short - don't explain why you don't know.
+- Be curious, ask clarifying questions, and encourage users to teach you - but keep questions SHORT (1 sentence max).
 - NEVER respond with just a period, comma, or punctuation mark.
-- ALWAYS complete your sentences. Never write incomplete thoughts or cut off mid-word.
 - Use your common sense to understand context, but ask questions when things are unclear.
 - ALWAYS read the conversation context before responding - make your responses make sense in context.
-- Write proper English with complete sentences, even if short.
+- Write proper English ONLY - no slang, no abbreviations, no broken grammar.
 
-${memoryContext ? `\nMEMORIES FROM MY BRAIN:\n${memoryContext}` : '\nI have no specific memories about this yet.'}
-${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
+${memoryContext ? `\n${memoryContext}` : ''}
+${mongoHistoryContext ? `\n${mongoHistoryContext}\n\nIMPORTANT: Use the information from the conversation history above. If the user asked something before and you answered, use that information now.` : ''}
+${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}
+
+${needsClarification && !hasRecentContext ? `\n\nCRITICAL: The user's message "${message}" is ambiguous and lacks context. You MUST ask for clarification. Do NOT guess. Ask a specific question like "Which president?" or "What do you mean?"` : ''}
+
+CRITICAL MEMORY RULE: If you have memories or conversation history that contains information about what the user is asking, YOU MUST USE THAT INFORMATION. Do not say "I don't know" if you have learned this information before. The memories and conversation history are FACTS you know.`;
 
     // Build messages array with conversation history
     const messages = [];
     
-    // Add conversation history (last 20 messages for better context)
-    const recentHistory = conversationHistory.slice(-20);
-    recentHistory.forEach(msg => {
+    // Add ALL conversation history - INFINITE - NO LIMIT
+    // THE BRAIN REMEMBERS EVERYTHING - include ALL messages from this session
+    conversationHistory.forEach(msg => {
       messages.push({ role: msg.role, content: msg.content });
     });
     
@@ -362,30 +396,136 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
 
     // Call Claude API
     const claudeResponse = await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 60, // Allow for natural, complete responses
-      temperature: 0.3, // Lower for more focused responses
+      model: 'claude-3-haiku-20240307', // Using Haiku (Opus not available via standard API)
+      max_tokens: 100, // Increased to prevent cutoffs - let AI finish sentences
+      temperature: 0.2, // Lower for more focused, consistent responses
       system: systemPrompt,
-      messages: messages,
-      stop_sequences: ['\n\n'] // Stop at double newline to prevent incomplete thoughts
+      messages: messages
     });
 
     let aiResponse = claudeResponse.content[0].text.trim();
     
-    // Fix truncation bug - ensure complete sentences
+    // Replace "our previous conversation" with "my memory" (person-specific)
+    aiResponse = aiResponse.replace(/our previous conversation/gi, 'my memory');
+    aiResponse = aiResponse.replace(/our previous chats?/gi, 'my memory');
+    aiResponse = aiResponse.replace(/from our conversation/gi, 'from my memory');
+    aiResponse = aiResponse.replace(/in our conversation/gi, 'in my memory');
+    aiResponse = aiResponse.replace(/based on the information you provided earlier/gi, 'based on my memory');
+    aiResponse = aiResponse.replace(/the information you provided earlier/gi, 'my memory');
+    aiResponse = aiResponse.replace(/based on what you told me earlier/gi, 'based on my memory');
+    aiResponse = aiResponse.replace(/what you told me earlier/gi, 'my memory');
+    aiResponse = aiResponse.replace(/the previous conversation/gi, 'my memory');
+    
+    // Remove "you" references when recalling from memory
+    aiResponse = aiResponse.replace(/you mentioned that/gi, 'I know that');
+    aiResponse = aiResponse.replace(/you mentioned/gi, 'I know');
+    aiResponse = aiResponse.replace(/you said that/gi, 'I know that');
+    aiResponse = aiResponse.replace(/you said/gi, 'I know');
+    aiResponse = aiResponse.replace(/you told me that/gi, 'I know that');
+    aiResponse = aiResponse.replace(/you told me/gi, 'I know');
+    aiResponse = aiResponse.replace(/you had indicated that/gi, 'I know that');
+    aiResponse = aiResponse.replace(/you had indicated/gi, 'I know');
+    aiResponse = aiResponse.replace(/you provided/gi, 'I know');
+    aiResponse = aiResponse.replace(/you shared/gi, 'I know');
+    aiResponse = aiResponse.replace(/In my memory, you mentioned/gi, 'I know');
+    aiResponse = aiResponse.replace(/In my memory, you said/gi, 'I know');
+    aiResponse = aiResponse.replace(/In my memory, you/gi, 'I know');
+    
+    // Replace "AI assistant" with "model"
+    aiResponse = aiResponse.replace(/AI assistant/gi, 'model');
+    aiResponse = aiResponse.replace(/an AI assistant/gi, 'a model');
+    aiResponse = aiResponse.replace(/as an AI assistant/gi, 'as a model');
+    aiResponse = aiResponse.replace(/I am an AI assistant/gi, 'I am a model');
+    aiResponse = aiResponse.replace(/I'm an AI assistant/gi, 'I\'m a model');
+    
+    // Remove verbose/unnecessary phrases - get straight to the point
+    aiResponse = aiResponse.replace(/I'm sorry,?\s+but\s+/gi, '');
+    aiResponse = aiResponse.replace(/I'm sorry,?\s*/gi, '');
+    aiResponse = aiResponse.replace(/thank you for providing that information,?\s*/gi, '');
+    aiResponse = aiResponse.replace(/thank you for sharing,?\s*/gi, '');
+    aiResponse = aiResponse.replace(/I appreciate you sharing,?\s*/gi, '');
+    aiResponse = aiResponse.replace(/I did not have any prior knowledge about,?\s*/gi, '');
+    aiResponse = aiResponse.replace(/I do not have any information about,?\s*/gi, 'I don\'t know about ');
+    aiResponse = aiResponse.replace(/I do not have any specific information about,?\s*/gi, 'I don\'t know about ');
+    aiResponse = aiResponse.replace(/I do not have any data about,?\s*/gi, 'I don\'t know about ');
+    aiResponse = aiResponse.replace(/I do not have the capability to/gi, 'I can\'t');
+    aiResponse = aiResponse.replace(/I want to make sure I have the right context,?\s*/gi, '');
+    aiResponse = aiResponse.replace(/Could you please\s+/gi, '');
+    aiResponse = aiResponse.replace(/\s+but I want to make sure[^.]*\./gi, '.');
+    aiResponse = aiResponse.replace(/\s+but I appreciate[^.]*\./gi, '.');
+    aiResponse = aiResponse.replace(/As an AI assistant,?\s+I am designed to/gi, 'I');
+    aiResponse = aiResponse.replace(/As a model,?\s+I am designed to/gi, 'I');
+    aiResponse = aiResponse.replace(/I am designed to provide short, direct responses[^.]*\./gi, '');
+    aiResponse = aiResponse.replace(/based on the context of our conversation[^.]*\./gi, '');
+    
+    // Clean up double spaces and trim
+    aiResponse = aiResponse.replace(/\s+/g, ' ').trim();
+    
+    // Soft check: If response is too long (more than 2 sentences), truncate at second sentence
+    const sentences = aiResponse.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    if (sentences.length > 2) {
+      // Keep only first 2 sentences
+      const firstTwo = sentences.slice(0, 2);
+      aiResponse = firstTwo.join('. ').trim();
+      if (!/[.!?]$/.test(aiResponse)) {
+        aiResponse += '.';
+      }
+    }
+    
+    // Additional check: If response is still too long (more than 50 words), truncate more aggressively
+    const words = aiResponse.split(/\s+/);
+    if (words.length > 50) {
+      // Find a good stopping point around 30-40 words
+      const targetWords = words.slice(0, 40);
+      let truncated = targetWords.join(' ');
+      // Try to end at sentence boundary
+      const lastPunct = Math.max(
+        truncated.lastIndexOf('.'),
+        truncated.lastIndexOf('!'),
+        truncated.lastIndexOf('?')
+      );
+      if (lastPunct > truncated.length * 0.6) {
+        truncated = truncated.substring(0, lastPunct + 1);
+      } else {
+        if (!/[.!?]$/.test(truncated)) {
+          truncated += '.';
+        }
+      }
+      aiResponse = truncated;
+    }
+    
+    // CRITICAL: Fix truncation - ensure NO responses are cut off mid-sentence
+    // Check if response ends with incomplete phrases (common truncation patterns)
+    const incompletePatterns = [
+      /the current president of\.?$/i,
+      /president of\.?$/i,
+      /about the\.?$/i,
+      /the [a-z]+ of\.?$/i,
+    ];
+    
     // Remove incomplete words at the end (single letters or fragments)
-    aiResponse = aiResponse.replace(/\s+[a-zA-Z]\s*$/, ''); // Remove trailing single letter like "I"
+    aiResponse = aiResponse.replace(/\s+[a-zA-Z]\s*$/, ''); // Remove trailing single letter
     aiResponse = aiResponse.replace(/\s+[a-zA-Z]{1,2}\s*$/, ''); // Remove trailing 1-2 letter words
     
-    // Complete common incomplete phrases
-    const lastWord = aiResponse.split(/\s+/).pop().toLowerCase().replace(/[.,!?;:]$/, '');
+    // Check if response ends with incomplete phrase
+    const lastWord = aiResponse.split(/\s+/).pop()?.toLowerCase().replace(/[.,!?;:]$/, '') || '';
+    const endsWithIncomplete = incompletePatterns.some(pattern => pattern.test(aiResponse.trim()));
     
+    // If response ends with incomplete phrase, try to complete it
+    if (endsWithIncomplete || lastWord === 'the' || lastWord === 'of' || lastWord === 'about') {
+      // Response was cut off - this shouldn't happen with higher max_tokens, but handle it
+      // Don't add random text, just ensure punctuation
+      if (!/[.!?]$/.test(aiResponse)) {
+        aiResponse += '.';
+      }
+    }
+    
+    // Complete common incomplete phrases
     if (lastWord === 'teach') {
       aiResponse = aiResponse.replace(/\s+teach\s*$/i, ' teach me?');
     } else if (lastWord === 'know' && !aiResponse.toLowerCase().includes("don't know")) {
       aiResponse = aiResponse.replace(/\s+know\s*$/i, ' know. Can you teach me?');
     } else if (aiResponse.toLowerCase().includes("don't know") && !/[.!?]$/.test(aiResponse)) {
-      // Complete "I don't know" phrases - this is the main fix
       aiResponse += '. Can you teach me?';
     } else if (aiResponse.length > 0 && !/[.!?]$/.test(aiResponse)) {
       // Add punctuation if missing
@@ -395,6 +535,84 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
     // Remove any leading/trailing whitespace
     aiResponse = aiResponse.replace(/^\s+|\s+$/g, '').trim();
     
+    // Fix common language issues
+    aiResponse = aiResponse.replace(/\bi\b/g, 'I'); // Capitalize I
+    aiResponse = aiResponse.replace(/\s+/g, ' '); // Fix multiple spaces
+    
+    // Fix common grammar mistakes
+    aiResponse = aiResponse.replace(/\bmemorys\b/gi, 'memories'); // Fix "memorys" -> "memories"
+    aiResponse = aiResponse.replace(/\bmy memorys\b/gi, 'my memories'); // Fix "my memorys" -> "my memories"
+    aiResponse = aiResponse.replace(/\bin my memorys\b/gi, 'in my memories'); // Fix "in my memorys" -> "in my memories"
+    aiResponse = aiResponse.replace(/\bfrom my memorys\b/gi, 'from my memories'); // Fix "from my memorys" -> "from my memories"
+    
+    // Fix grammar: Capitalize first letter of response
+    if (aiResponse.length > 0) {
+      aiResponse = aiResponse.charAt(0).toUpperCase() + aiResponse.slice(1);
+    }
+    
+    // Fix grammar: Capitalize first letter after sentence endings
+    aiResponse = aiResponse.replace(/([.!?]\s+)([a-z])/g, (match, p1, p2) => {
+      return p1 + p2.toUpperCase();
+    });
+    
+    // Fix grammar: Ensure proper spacing after punctuation
+    aiResponse = aiResponse.replace(/([.!?])([a-zA-Z])/g, '$1 $2');
+    
+    // Fix grammar: Remove spaces before punctuation
+    aiResponse = aiResponse.replace(/\s+([.,!?;:])/g, '$1');
+    
+    // Fix grammar: Ensure space after commas
+    aiResponse = aiResponse.replace(/,([a-zA-Z])/g, ', $1');
+    
+    // Fix grammar: Remove incomplete sentences at the end
+    aiResponse = aiResponse.replace(/\s+(the|a|an|of|in|on|at|to|for|with|by)\s*\.?$/i, '.');
+    
+    // Fix grammar: Remove trailing incomplete words (1-2 letters)
+    aiResponse = aiResponse.replace(/\s+[a-zA-Z]{1,2}\s*\.?$/g, '.');
+    
+    // Fix grammar: Ensure response ends with proper punctuation
+    if (aiResponse.length > 0 && !/[.!?]$/.test(aiResponse.trim())) {
+      // If it ends with a comma or semicolon, replace with period
+      if (/[,;]$/.test(aiResponse.trim())) {
+        aiResponse = aiResponse.replace(/[,;]$/, '.');
+      } else {
+        aiResponse = aiResponse.trim() + '.';
+      }
+    }
+    
+    // Fix grammar: Remove double punctuation
+    aiResponse = aiResponse.replace(/([.!?])\1+/g, '$1');
+    aiResponse = aiResponse.replace(/([.!?]),/g, '$1');
+    
+    // Fix grammar: Ensure proper sentence structure - remove sentences that don't make sense
+    const grammarSentences = aiResponse.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const validSentences = grammarSentences.filter(s => {
+      const trimmed = s.trim();
+      // Remove sentences that are too short and don't make sense
+      if (trimmed.length < 3) return false;
+      // Remove sentences that are just single words (unless they're valid)
+      const words = trimmed.split(/\s+/);
+      if (words.length === 1 && !['Yes', 'No', 'Hello', 'Hi', 'Okay', 'OK'].includes(trimmed)) {
+        return false;
+      }
+      return true;
+    });
+    
+    if (validSentences.length > 0) {
+      aiResponse = validSentences.join('. ').trim();
+      // Ensure it ends with punctuation
+      if (!/[.!?]$/.test(aiResponse)) {
+        aiResponse += '.';
+      }
+    }
+    
+    // Final cleanup
+    aiResponse = aiResponse.replace(/\s+/g, ' ').trim();
+    
+    // Final check: if response still looks incomplete, log warning
+    if (aiResponse.match(/about the\.?$/i) || aiResponse.match(/the [a-z]+\.?$/i)) {
+    }
+    
     // Check if response is empty, too short, or just punctuation
     const isInvalid = !aiResponse || 
                      aiResponse.length < 2 || 
@@ -403,7 +621,6 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
     
     if (isInvalid) {
       // Fallback response if AI gives empty or just punctuation
-      console.log('⚠️ Invalid response detected:', aiResponse, '- Using fallback');
       if (isGreeting || /^(hi|hello|hey)/i.test(message.trim())) {
         aiResponse = "Hello!";
       } else if (isNameQuery) {
@@ -418,32 +635,25 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
       aiResponse = "Hello!";
     }
     
-    // Step 3: Add memory (always save meaningful conversations)
+    // Step 3: Add memory (ALWAYS save ALL interactions - THE BRAIN MUST KNOW EVERYTHING)
     let memoryId = null;
     
-    // Save memory if:
-    // 1. We don't have memory about this topic (or it's a new variation)
-    // 2. The response is meaningful (not "I don't know")
-    const isMeaningfulResponse = !aiResponse.toLowerCase().includes("i don't know") && 
-                                 !aiResponse.toLowerCase().includes("haven't learned") &&
-                                 aiResponse.length > 5;
-    
-    // Always save meaningful conversations to learn
-    if (isMeaningfulResponse) {
-      try {
-        const memoryContent = `Question: ${message}\nAnswer: ${aiResponse}`;
-        memoryId = await memoryStore.addMemory(memoryContent, {
-          source: 'conversation',
-          question: message.substring(0, 100),
-          timestamp: new Date().toISOString()
-        });
-        if (memoryId) {
-          steps.push({ type: 'status', text: 'Learning...', color: 'yellow', order: 3 });
-          console.log('💾 Saved memory:', memoryContent.substring(0, 100));
-        }
-      } catch (error) {
-        console.error('Error saving memory:', error.message);
+    // Save ALL conversations to learn from every interaction
+    // THE BRAIN MUST REMEMBER EVERYTHING - no exceptions
+    try {
+      const memoryContent = `Question: ${message}\nAnswer: ${aiResponse}`;
+      memoryId = await memoryStore.addMemory(memoryContent, {
+        source: 'conversation',
+        question: message.substring(0, 100),
+        answer: aiResponse.substring(0, 100),
+        sessionId: session,
+        timestamp: new Date().toISOString()
+      });
+      if (memoryId) {
+        steps.push({ type: 'status', text: 'Learning...', color: 'yellow', order: 3 });
       }
+    } catch (error) {
+      // Don't fail the request, but log the error
     }
     
     // Save to conversation history
@@ -459,12 +669,8 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
         webInfo: webInfo ? 'yes' : 'no'
       });
       if (saved) {
-        console.log('✅ Saved conversation to MongoDB:', saved.sessionId, '- User:', message.substring(0, 30));
-      } else {
-        console.warn('⚠️  Conversation not saved to MongoDB (check MongoDB password in server/.env)');
       }
     } catch (error) {
-      console.error('❌ Error saving conversation to MongoDB:', error.message);
       // Don't throw - continue even if MongoDB fails
     }
     
@@ -475,7 +681,6 @@ ${webContext ? `\nWEB INFORMATION (for learning):\n${webContext}` : ''}`;
       memorySaved: memoryId !== null
     });
   } catch (error) {
-    console.error('Chat error:', error);
     res.status(500).json({ 
       error: 'Failed to process chat message',
       details: error.message 
@@ -539,17 +744,19 @@ app.get('/api/logs/stats', async (req, res) => {
     const stats = await getStats();
     res.json(stats);
   } catch (error) {
-    console.error('Error getting stats:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/logs/conversations', async (req, res) => {
   try {
-    const { search, limit = 100, skip = 0 } = req.query;
+    const { search, limit = 100, skip = 0, sessionId } = req.query;
     let conversations;
     
-    if (search) {
+    if (sessionId) {
+      // Get all conversations for a specific session
+      conversations = await getConversationsBySession(sessionId);
+    } else if (search) {
       conversations = await searchConversations(search, parseInt(limit));
     } else {
       conversations = await getConversations({}, parseInt(limit), parseInt(skip));
@@ -557,7 +764,6 @@ app.get('/api/logs/conversations', async (req, res) => {
     
     res.json(conversations);
   } catch (error) {
-    console.error('Error getting conversations:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -576,6 +782,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`🧠 Brain AI ready to learn!`);
+// Server running
 });

@@ -20,44 +20,11 @@ function ChatInterface({ sessionId }) {
     if (messagesEndRef.current) {
       const container = messagesEndRef.current.parentElement;
       if (container) {
-        const targetScroll = container.scrollHeight - container.clientHeight;
-        const startScroll = container.scrollTop;
-        const distance = targetScroll - startScroll;
-        const duration = Math.min(1200, Math.abs(distance) * 3); // Much slower, smoother scroll
-        const startTime = performance.now();
-        
-        // Stronger ease-in-out with more pronounced acceleration/deceleration
-        const easeInOutQuart = (t) => {
-          return t < 0.5 
-            ? 8 * t * t * t * t 
-            : 1 - Math.pow(-2 * t + 2, 4) / 2;
-        };
-        
-        // Even smoother with ease-in-out-expo for very smooth start/end
-        const easeInOutExpo = (t) => {
-          return t === 0 || t === 1
-            ? t
-            : t < 0.5
-            ? Math.pow(2, 20 * t - 10) / 2
-            : (2 - Math.pow(2, -20 * t + 10)) / 2;
-        };
-        
-        const animateScroll = (currentTime) => {
-          const elapsed = currentTime - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          // Use easeInOutExpo for very smooth acceleration/deceleration
-          const eased = easeInOutExpo(progress);
-          container.scrollTop = startScroll + (distance * eased);
-          
-          if (progress < 1) {
-            requestAnimationFrame(animateScroll);
-          }
-        };
-        
-        requestAnimationFrame(animateScroll);
+        // Instant scroll for better performance - no animation
+        container.scrollTop = container.scrollHeight;
       } else {
         messagesEndRef.current.scrollIntoView({ 
-          behavior: 'smooth',
+          behavior: 'auto', // Changed from 'smooth' to 'auto' for instant scroll
           block: 'end'
         });
       }
@@ -65,7 +32,11 @@ function ChatInterface({ sessionId }) {
   };
 
   useEffect(() => {
-    scrollToBottom();
+    // Only scroll when messages change, not on every render
+    // Use requestAnimationFrame for smoother, non-blocking scroll
+    requestAnimationFrame(() => {
+      scrollToBottom();
+    });
   }, [messages, currentSteps, welcomeComplete]);
 
   // Keep input focused when not loading
@@ -132,7 +103,6 @@ function ChatInterface({ sessionId }) {
             }, 300); // Small delay after clearing steps
           }, stepsDuration + 500);
     } catch (error) {
-      console.error('Chat error:', error);
       let errorMessage = 'Error connecting to server. ';
       if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
         errorMessage += 'Please make sure the server is running on port 5000.';
@@ -206,6 +176,8 @@ function ChatInterface({ sessionId }) {
             className="chat-input"
             disabled={isLoading}
             autoFocus
+            autoComplete="off"
+            spellCheck="false"
           />
           <button 
             type="submit" 

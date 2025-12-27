@@ -26,10 +26,7 @@ class MemoryStore {
         name: this.collectionName,
         metadata: { description: 'AI Brain Memory Store' }
       });
-      console.log(`✅ Connected to Chroma collection: ${this.collectionName}`);
     } catch (error) {
-      console.error('❌ Error connecting to Chroma:', error.message);
-      console.log('💡 Make sure Chroma is running: docker-compose up -d');
       throw error;
     }
   }
@@ -80,7 +77,6 @@ class MemoryStore {
 
       return id;
     } catch (error) {
-      console.error('Error adding memory:', error);
       throw error;
     }
   }
@@ -104,7 +100,6 @@ class MemoryStore {
 
       return [];
     } catch (error) {
-      console.error('Error searching memories:', error);
       return [];
     }
   }
@@ -121,7 +116,6 @@ class MemoryStore {
         id: results.ids[i]
       }));
     } catch (error) {
-      console.error('Error getting all memories:', error);
       return [];
     }
   }
@@ -133,8 +127,52 @@ class MemoryStore {
       });
       return true;
     } catch (error) {
-      console.error('Error deleting memory:', error);
       return false;
+    }
+  }
+
+  async clearAllMemoriesExceptBasic() {
+    try {
+      // Get all memories
+      const allMemories = await this.getAllMemories(10000);
+      
+      // Filter out basic knowledge (those with category: 'basic' in metadata)
+      const memoriesToDelete = allMemories.filter(m => {
+        const metadata = m.metadata || {};
+        return metadata.category !== 'basic';
+      });
+      
+      // Delete non-basic memories
+      if (memoriesToDelete.length > 0) {
+        const idsToDelete = memoriesToDelete.map(m => m.id).filter(id => id);
+        if (idsToDelete.length > 0) {
+          await this.collection.delete({
+            ids: idsToDelete
+          });
+        }
+      }
+      
+      return memoriesToDelete.length;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  async clearAllMemories() {
+    try {
+      // Get all memories
+      const allMemories = await this.getAllMemories(10000);
+      const idsToDelete = allMemories.map(m => m.id).filter(id => id);
+      
+      if (idsToDelete.length > 0) {
+        await this.collection.delete({
+          ids: idsToDelete
+        });
+      }
+      
+      return idsToDelete.length;
+    } catch (error) {
+      return 0;
     }
   }
 }
