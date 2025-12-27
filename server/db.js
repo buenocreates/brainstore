@@ -4,7 +4,7 @@ require('dotenv').config();
 let client = null;
 let db = null;
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://oubeisia_db_user:<db_password>@cluster0.kfugj6n.mongodb.net/brainai?retryWrites=true&w=majority&appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://<username>:<password>@<cluster>.mongodb.net/brainai?retryWrites=true&w=majority';
 const DB_NAME = process.env.DB_NAME || 'brainai';
 
 async function connectDB() {

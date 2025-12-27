@@ -91,8 +91,38 @@ function ConversationLogs() {
         headers: { 'Cache-Control': 'no-cache' }
       });
       if (response.data && Array.isArray(response.data)) {
+        // Group conversations by sessionId - each session is one conversation
+        const groupedBySession = {};
+        response.data.forEach(conv => {
+          const sessionId = conv.sessionId || 'unknown';
+          if (!groupedBySession[sessionId]) {
+            groupedBySession[sessionId] = {
+              sessionId: sessionId,
+              messages: [],
+              timestamp: conv.timestamp,
+              _id: conv._id
+            };
+          }
+          groupedBySession[sessionId].messages.push({
+            userMessage: conv.userMessage,
+            aiResponse: conv.aiResponse,
+            timestamp: conv.timestamp
+          });
+          // Use earliest timestamp for the session
+          if (new Date(conv.timestamp) < new Date(groupedBySession[sessionId].timestamp)) {
+            groupedBySession[sessionId].timestamp = conv.timestamp;
+          }
+        });
+        
+        // Convert grouped sessions to array format
+        const groupedConversations = Object.values(groupedBySession).map(session => ({
+          ...session,
+          userMessage: session.messages.map(m => m.userMessage).join(' | '),
+          aiResponse: session.messages.map(m => m.aiResponse).join(' | ')
+        }));
+        
         // Apply filters (including text search if searchQuery exists)
-        let filtered = applyFilters(response.data);
+        let filtered = applyFilters(groupedConversations);
         setAllFilteredConversations(filtered); // Store all filtered for pagination
         // Apply pagination
         const startIndex = (currentPage - 1) * conversationsPerPage;
@@ -117,8 +147,38 @@ function ConversationLogs() {
         headers: { 'Cache-Control': 'no-cache' }
       });
       if (response.data && Array.isArray(response.data)) {
+        // Group conversations by sessionId - each session is one conversation
+        const groupedBySession = {};
+        response.data.forEach(conv => {
+          const sessionId = conv.sessionId || 'unknown';
+          if (!groupedBySession[sessionId]) {
+            groupedBySession[sessionId] = {
+              sessionId: sessionId,
+              messages: [],
+              timestamp: conv.timestamp,
+              _id: conv._id
+            };
+          }
+          groupedBySession[sessionId].messages.push({
+            userMessage: conv.userMessage,
+            aiResponse: conv.aiResponse,
+            timestamp: conv.timestamp
+          });
+          // Use earliest timestamp for the session
+          if (new Date(conv.timestamp) < new Date(groupedBySession[sessionId].timestamp)) {
+            groupedBySession[sessionId].timestamp = conv.timestamp;
+          }
+        });
+        
+        // Convert grouped sessions to array format
+        const groupedConversations = Object.values(groupedBySession).map(session => ({
+          ...session,
+          userMessage: session.messages.map(m => m.userMessage).join(' | '),
+          aiResponse: session.messages.map(m => m.aiResponse).join(' | ')
+        }));
+        
         // Apply filters (including text search if searchQuery exists)
-        let filtered = applyFilters(response.data);
+        let filtered = applyFilters(groupedConversations);
         setAllFilteredConversations(filtered); // Store all filtered for pagination
         // Apply pagination - preserve current page
         const startIndex = (currentPage - 1) * conversationsPerPage;
@@ -133,9 +193,8 @@ function ConversationLogs() {
           // Check if any conversation changed
           const hasChanges = prev.some((conv, idx) => {
             const newConv = paginated[idx];
-            return !newConv || conv._id !== newConv._id || 
-                   conv.userMessage !== newConv.userMessage ||
-                   conv.aiResponse !== newConv.aiResponse;
+            return !newConv || conv.sessionId !== newConv.sessionId || 
+                   (conv.messages && conv.messages.length !== (newConv.messages?.length || 0));
           });
           return hasChanges ? paginated : prev;
         });
@@ -338,9 +397,10 @@ function ConversationLogs() {
         ) : (
           conversations.map((conv, idx) => {
             const conversationCode = generateConversationCode(conv, allFilteredConversations);
+            const messages = conv.messages || [];
             return (
               <div 
-                key={conv._id || idx} 
+                key={conv.sessionId || idx} 
                 className="conversation-box"
                 onClick={() => handleConversationClick(conv)}
               >
@@ -350,14 +410,31 @@ function ConversationLogs() {
                 </div>
                 <div className="conversation-code">ID: {conv.sessionId || 'N/A'}</div>
                 <div className="conversation-content">
-                  <div className="message-row user-message">
-                    <span className="message-label">User:</span>
-                    <span className="message-text">{conv.userMessage}</span>
-                  </div>
-                  <div className="message-row ai-message">
-                    <span className="message-label">Brain:</span>
-                    <span className="message-text">{conv.aiResponse}</span>
-                  </div>
+                  {messages.length > 0 ? (
+                    messages.map((msg, msgIdx) => (
+                      <React.Fragment key={msgIdx}>
+                        <div className="message-row user-message">
+                          <span className="message-label">User:</span>
+                          <span className="message-text">{msg.userMessage}</span>
+                        </div>
+                        <div className="message-row ai-message">
+                          <span className="message-label">Brain:</span>
+                          <span className="message-text">{msg.aiResponse}</span>
+                        </div>
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <>
+                      <div className="message-row user-message">
+                        <span className="message-label">User:</span>
+                        <span className="message-text">{conv.userMessage}</span>
+                      </div>
+                      <div className="message-row ai-message">
+                        <span className="message-label">Brain:</span>
+                        <span className="message-text">{conv.aiResponse}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             );
