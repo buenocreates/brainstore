@@ -18,7 +18,7 @@ function Home() {
 
   const handleCopy = () => {
     const caAddress = 'ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump';
-    navigator.clipboard.writeText(`CA: ${caAddress}`).then(() => {
+    navigator.clipboard.writeText(caAddress).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
