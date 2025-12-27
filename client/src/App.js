@@ -17,9 +17,8 @@ function Home() {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    // Remove "session_" prefix if present
-    const displayId = sessionId.replace(/^session_/, '');
-    navigator.clipboard.writeText(`CA: ${displayId}`).then(() => {
+    const caAddress = 'ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump';
+    navigator.clipboard.writeText(`CA: ${caAddress}`).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -33,7 +32,7 @@ function Home() {
         onClick={handleCopy}
         title="Click to copy session ID"
       >
-        {copied ? '✓ Copied!' : 'CA: ...'}
+        {copied ? '✓ Copied!' : 'CA: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump'}
       </button>
       <Link to="/logs" className="logs-link">
         View Conversation Logs →
