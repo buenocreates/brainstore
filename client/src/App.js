@@ -32,7 +32,7 @@ function Home() {
         onClick={handleCopy}
         title="Click to copy session ID"
       >
-        {copied ? '✓ Copied!' : 'CA: ACfW2FsF3WjHWmCGM43NtEwt1qyg1tHwvE3aJuDYpump'}
+        {copied ? '✓ Copied!' : 'CA: ACfW...pump'}
       </button>
       <Link to="/logs" className="logs-link">
         View Conversation Logs →
